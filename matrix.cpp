@@ -58,13 +58,33 @@ TMatrixD gen_mat_cov(vector<vector<double>> &matrix) {
 	return cov_matrix;
 }
 
+void vector_plot(vector<double> &vec) 
+{
+	int size = vec.size();
+	TH1F *hist = new TH1F("mat_hist", "Matrix Plot", size, 0, size);
+	
+	for(int i=0; i<size; i++) {
+		hist->Fill(i+1);
+	}
+	TCanvas* canvas = new TCanvas("canvas", "TMatrix Plot", 800, 600);
+	hist->Draw("COLZ"); // COLZ option for a color plot
+	hist->GetXaxis()->SetTitle("X-Axis");
+	hist->GetYaxis()->SetTitle("Y-Axis");
+	canvas->Draw();
+}
+ 
+
+
 void psuedo_plt(vector<vector<double>> &psuedo_vector) 
 {
+	double ymax = 26;
+	int size = psuedo_vector.size();
+	
 	TCanvas *canvas = new TCanvas("canvas", "Histograms", 800, 600);
-	for(int i=0; i<psuedo_vector.size(); i++) {
-		TH1F *histogram = new TH1F(Form("hist%d", i), Form("Histogram %d", i), 364, 0, 364);
-		for(double value : psuedo_vector[i]) {
-			histogram->Fill(value);
+	for(int i=0; i<25; i++) {
+		TH1F *histogram = new TH1F(Form("hist%d", i), Form("Histogram %d", i), 25, 0, 25);
+		for(int j=0; j<size; j++) {
+			histogram->Fill(i+1,psuedo_vector[j].at(i));
 			
 		}
 		if(i==0) {
@@ -72,17 +92,13 @@ void psuedo_plt(vector<vector<double>> &psuedo_vector)
 			histogram->SetMarkerSize(5.5);
 			
 			histogram->SetLineColor(kRed);
-			
+			histogram->SetMaximum(ymax);
 			histogram->Draw();
 			
 		}
-		// else if(i==0) {
-		// 	histogram->SetLineColor(kRed)
-		// 	histogram->Draw("same");
-			
-		// }
 		else {
 			histogram->SetMarkerSize(5.5);
+			histogram->SetMaximum(ymax);
 			histogram->Draw("same");
 			
 		}
@@ -99,17 +115,16 @@ int main(int argc, char **argv)
 	TApplication app("app", &argc, argv);
 
 	// Variables for holding extracted data
+	
 	TFile root_file("file_total_80dm2_2tue_t24_input.root");
 	TMatrixD* mat_frac = (TMatrixD*)root_file.Get("matrix_fractional_flux_Xs_G4_det");
+
 	int nRows = mat_frac->GetNrows();
 	int nCols = mat_frac->GetNcols();
 	TMatrixD mat_cov(nRows,nCols);
 	TMatrixD mat_rho(nRows,nCols);
 	TMatrixD mat_cv(1,1092);
 	TMatrixD* mat_transition = (TMatrixD*)root_file.Get("matrix_transition");
-	// matrix_stat(*mat_transition);
-	
-		
 	// Generate the correlation matrix
 	for(int i=0; i<nRows; i++) {
 		for(int j=0; j<nCols; j++) {
@@ -118,31 +133,32 @@ int main(int argc, char **argv)
 			
 		}
 	}
-
+	// We will only want to generate COV and fluctuate values relating to first 25 bins
+	// Cut this off to pull out only 25 values and change the shape
 	// Generate the Cov matrix
 	TTree *tree(dynamic_cast<TTree*>(root_file.Get("tree_spectrum")));
 	vector<float>* cv_vec = nullptr;
 	tree->SetBranchAddress("vec_energy_spectrum", &cv_vec);
 	tree->GetEntry(0);
-	for(int i=0;i<1092; i++) {
+	for(int i=0;i<25; i++) {
 		mat_cv[0][i] = cv_vec->at(i);
 	}
-	for(int i=0; i<1092; i++) {
-		for(int j=0; j<1092; j++) {
+	for(int i=0; i<25; i++) {
+		for(int j=0; j<25; j++) {
 			mat_cov(i,j) = (*mat_frac)(i,j)*mat_cv(0,i)*mat_cv(0,j);
 			
 			}
 	}
-	cout <<"Transition" <<endl;
-	
 	TMatrixD mat_transpose(TMatrixT<double>::kTransposed, *mat_transition);
 	TMatrixD mat_collapse = mat_transpose*mat_cov*(*mat_transition);
-	
-	// TH1F *hist_cv = new TH1F("histo_cv", "CV Matrix", 1092, 0, 1092);
-	// for(int i=0; i<1092; i++) {
+
+	// This code is for plotting the original 
+	// TH1F *hist_cv = new TH1F("histo_cv", "CV Matrix", 25, 0, 25);
+	// for(int i=0; i<25; i++) {
 	// 	hist_cv->Fill(i+1,mat_cv(0,i));
 		
 	// }
+	// hist_cv->Sumw2(0);
 	// hist_cv->Draw();
 	
 // // Validating mat_cov
@@ -179,7 +195,7 @@ int main(int argc, char **argv)
 	cout << "Matrix U" <<endl;
 	TMatrixD S(364,1);
 	for(int i=0; i<1; i++) {
-		for(int j=0; j<364; j++) {
+		for(int j=0; j<25; j++) {
 			S(j,i) = mat_cv(i,j);
 		}
 	}
@@ -192,10 +208,11 @@ int main(int argc, char **argv)
 	// Loop over to create S'1-S'N values
 	vector<double> product;
 	vector<double> product_sum;
+	// Here is where we will only care about 25 values
 	// A Vector of vectors of double values
 	vector<vector<double>> spectrum;
 	vector<double> temp;			
-	int num_psuedo = 25;
+	int num_psuedo = 100;
 	// Save the original spectrum in slot 0
 	for(int i=0; i<364; i++) {
 		temp.push_back(spectrum_transformed(i,0));
@@ -211,7 +228,37 @@ int main(int argc, char **argv)
 		spectrum.push_back(row);
 	}
 
-	psuedo_plt(spectrum);
+	// Now I need to use U to get back into realspace
+	for(int i=0; i<num_psuedo; i++) {
+		// Copy the vector into a TVector
+		TVectorD temp_tvec(364, spectrum[i].data());
+		// Perform the multiplication
+		TVectorD result_tvec = U*temp_tvec;
+		
+		// Convert result TVec back into a vector
+		vector<double> result_vec(result_tvec.GetNrows());
+		for(int i=0; i<result_tvec.GetNrows(); i++) {
+			result_vec[i] = result_tvec[i];
+		}
+		// Now Tack the vectir back into spectrum
+		spectrum[i] = result_vec;
+		
+		
+	}
+
+	// This code is for plotting the original 
+
+	TH1F *hist_cv =  new TH1F("histo_cv", "CV Matrix", 25, 0, 25);
+	for(int i=0; i<25; i++) {
+		hist_cv->Fill(i+1,spectrum[99].at(i));
+		
+	}
+	hist_cv->Sumw2(0);
+	hist_cv->Draw();
+
+	// psuedo_plt(spectrum);
+
+	
 	
 	// Now I need to generate the the covariance matrix
 	// TMatrixD mat_cov_psuedo = gen_mat_cov(spectrum);
