@@ -21,7 +21,7 @@
 #include <cmath>
 using namespace std;
 
-TRandom3 randomgen;
+
 
 double calc_avg(vector<double> &data) {
 	double sum = 0.0;
@@ -76,34 +76,42 @@ void vector_plot(vector<double> &vec)
  
 
 
-void psuedo_plt(vector<vector<double>> &psuedo_vector) 
-{
-	double ymax = 26;
-	int size = psuedo_vector.size();
+void psuedo_plt(vector<vector<double>> &psuedo_vector)
 	
-	for(int i=0; i<25; i++) {
+{
+	double ymax = 50;
+	TCanvas* canvas = new TCanvas("canvas", "TMatrix Plot", 800, 600);
+	for (int i=0; i<psuedo_vector.size(); i++) {
 		TH1F *histogram = new TH1F(Form("hist%d", i), Form("Histogram %d", i), 25, 0, 25);
-		for(int j=0; j<size; j++) {
-			histogram->Fill(i+1,psuedo_vector[j].at(i));
-			
-		}
-		if(i==0) {
-			histogram->SetMarkerColor(kRed);
-			histogram->SetMarkerSize(5.5);
-			
-			histogram->SetLineColor(kRed);
-			histogram->SetMaximum(ymax);
-			histogram->Draw();
-			
-		}
-		else {
-			histogram->SetMarkerSize(5.5);
-			histogram->SetMaximum(ymax);
-			histogram->Draw("same");
-			
+		for(int j= 0; j<25; j++) {
+			histogram->Fill(j+1, psuedo_vector[i][j]);
+			if(i==0) {
+				histogram->Sumw2(0);
+				histogram->SetMaximum(ymax);
+				histogram->SetLineColor(kRed);
+				histogram->Draw();
+			}
+			else {
+				
+				histogram->Sumw2(0);
+				histogram->SetMarkerSize(5.5);
+				histogram->Draw("same");
+			}
+
 		}
 	}
-} 
+	TH1F *histogram = new TH1F("hist", "Pseudoexperiments", 25, 0, 25);
+	for(int i=0; i<25; i++) {
+		histogram->Fill(i+1, psuedo_vector[0][i]);
+	}
+	histogram->Sumw2(0);
+	histogram->SetMaximum(ymax);
+	histogram->SetLineColor(kRed);
+	histogram->Draw("same");
+
+
+	canvas->Draw();
+}
 
 void matrix_plot(TMatrixT<double> &matrix) 
 {
@@ -138,7 +146,11 @@ void matrix_stat(TMatrixT<double> &matrix)
 int main(int argc, char **argv) 
 {
 	TApplication app("app", &argc, argv);
-
+	// Use epoch time to seed since I am a linux nerd
+	auto now = std::chrono::system_clock::now().time_since_epoch();
+	unsigned int seed = static_cast<unsigned int>(now.count());
+	TRandom3 randomgen;
+	randomgen.SetSeed(seed);
 	// Variables for holding extracted data
 	
 	TFile root_file("file_total_80dm2_2tue_t24_input.root");
@@ -272,24 +284,24 @@ int main(int argc, char **argv)
 	}
 
 	// Calculate the covariance Matrix
-	for(int i=0; i<25; i++) {
-		for(int j=0; j<i; j++)
-			for(int k=0; k<num_psuedo; k++) {
-				spectrum[k][j]*spectrum[k][j];
+	// for(int i=0; i<25; i++) {
+	// 	for(int j=0; j<i; j++)
+	// 		for(int k=0; k<num_psuedo; k++) {
+	// 			spectrum[k][j]*spectrum[k][j];
 				
-			}
-	}
+	// 		}
+	// }
 	// This code is for plotting the original 
 
-	TH1F *hist_cv =  new TH1F("histo_cv", "CV Matrix", 25, 0, 25);
-	for(int i=0; i<25; i++) {
-		hist_cv->Fill(i+1,spectrum[99].at(i));
+	// TH1F *hist_cv =  new TH1F("histo_cv", "CV Matrix", 25, 0, 25);
+	// for(int i=0; i<25; i++) {
+	// 	hist_cv->Fill(i+1,spectrum[99].at(i));
 		
-	}
-	hist_cv->Sumw2(0);
-	hist_cv->Draw();
+	// }
+	// hist_cv->Sumw2(0);
+	// hist_cv->Draw();
 
-	// psuedo_plt(spectrum);
+	psuedo_plt(spectrum);
 
 	
 	
