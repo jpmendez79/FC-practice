@@ -7,6 +7,7 @@
 #include <TMinuit.h>
 #include <TObject.h>
 #include <TRandom.h>
+#include <cstddef>
 #include <iostream>
 #include <TMatrixD.h>
 #include <TMatrixT.h>
@@ -35,7 +36,7 @@ double calc_covariance(vector<double> &data1, vector<double> &data2) {
 	double avg2 = calc_avg(data2);
 	// cout << data1.size() <<endl;
 	double sum = 0.0;
-	for(int i=0; i<data1.size(); i++) {
+	for(size_t i=0; i<data1.size(); i++) {
 		sum += data1[i]*data2[i];
 	}
 	double avg_product = sum/data1.size();
@@ -46,9 +47,9 @@ TMatrixD gen_mat_cov(vector<vector<double>> &matrix) {
 	size_t size = matrix.size();
 	size_t dim = matrix[0].size();
 	TMatrixD cov_matrix(dim, dim);
-	for(int i=0; i<size; i++) {
-		for(int j=0; j<dim; j++) {
-			for(int k=1; k<j; k++) {
+	for(size_t i=0; i<size; i++) {
+		for(size_t j=0; j<dim; j++) {
+			for(size_t k=1; k<j; k++) {
 				cov_matrix[j][k] = calc_covariance(matrix[j], matrix[k]);
 				cov_matrix[k][j] = cov_matrix[j][k];
 
@@ -80,7 +81,6 @@ void psuedo_plt(vector<vector<double>> &psuedo_vector)
 	double ymax = 26;
 	int size = psuedo_vector.size();
 	
-	TCanvas *canvas = new TCanvas("canvas", "Histograms", 800, 600);
 	for(int i=0; i<25; i++) {
 		TH1F *histogram = new TH1F(Form("hist%d", i), Form("Histogram %d", i), 25, 0, 25);
 		for(int j=0; j<size; j++) {
@@ -105,10 +105,35 @@ void psuedo_plt(vector<vector<double>> &psuedo_vector)
 	}
 } 
 
-// Function prototypes
-void matrix_plot(TMatrixT<double> &matrix);
+void matrix_plot(TMatrixT<double> &matrix) 
+{
+	int n_rows = matrix.GetNrows();
+	int n_cols = matrix.GetNcols();
+	TH2F *hist = new TH2F("mat_hist", "Matrix Plot", n_cols, 0, n_cols, n_rows, 0, n_rows);
+	for(int i=0; i<n_rows; i++) {
+		for( int j=0; j<n_rows; j++) {
+			hist->Fill(i+1, j+1, matrix(i,j));
+		}
+	}
+	hist->SetMinimum(-1); // Replace 'minimum_value' with the desired minimum value
+	hist->SetMaximum(1); // Replace 'maximum_value' with the desired maximum value
+    // Save the histogram to a root file
+    TFile outputFile("matrixHistogram.root", "RECREATE");
+	TCanvas* canvas = new TCanvas("canvas", "TMatrix Plot", 800, 600);
+	hist->Draw("COLZ"); // COLZ option for a color plot
+	// Optional: Set axis labels
+	hist->GetXaxis()->SetTitle("X-Axis");
+	hist->GetYaxis()->SetTitle("Y-Axis");
+	// Show the canvas
+	canvas->Draw();
+}
 
-void matrix_stat(TMatrixT<double> &matrix);
+void matrix_stat(TMatrixT<double> &matrix) 
+{
+	cout << "Matrix Info" << endl;
+	cout << "Rows: " << matrix.GetNrows() << endl;
+	cout << "Cols: " << matrix.GetNcols() << endl;
+}
 
 int main(int argc, char **argv) 
 {
@@ -246,6 +271,14 @@ int main(int argc, char **argv)
 		
 	}
 
+	// Calculate the covariance Matrix
+	for(int i=0; i<25; i++) {
+		for(int j=0; j<i; j++)
+			for(int k=0; k<num_psuedo; k++) {
+				spectrum[k][j]*spectrum[k][j];
+				
+			}
+	}
 	// This code is for plotting the original 
 
 	TH1F *hist_cv =  new TH1F("histo_cv", "CV Matrix", 25, 0, 25);
@@ -269,35 +302,5 @@ int main(int argc, char **argv)
 	// canvas->Update();
 	app.Run();		
 	return 0;
-}
-
-void matrix_plot(TMatrixT<double> &matrix) 
-{
-	int n_rows = matrix.GetNrows();
-	int n_cols = matrix.GetNcols();
-	TH2F *hist = new TH2F("mat_hist", "Matrix Plot", n_cols, 0, n_cols, n_rows, 0, n_rows);
-	for(int i=0; i<n_rows; i++) {
-		for( int j=0; j<n_rows; j++) {
-			hist->Fill(i+1, j+1, matrix(i,j));
-		}
-	}
-	hist->SetMinimum(-1); // Replace 'minimum_value' with the desired minimum value
-	hist->SetMaximum(1); // Replace 'maximum_value' with the desired maximum value
-    // Save the histogram to a root file
-    TFile outputFile("matrixHistogram.root", "RECREATE");
-	TCanvas* canvas = new TCanvas("canvas", "TMatrix Plot", 800, 600);
-	hist->Draw("COLZ"); // COLZ option for a color plot
-	// Optional: Set axis labels
-	hist->GetXaxis()->SetTitle("X-Axis");
-	hist->GetYaxis()->SetTitle("Y-Axis");
-	// Show the canvas
-	canvas->Draw();
-}
-
-void matrix_stat(TMatrixT<double> &matrix) 
-{
-	cout << "Matrix Info" << endl;
-	cout << "Rows: " << matrix.GetNrows() << endl;
-	cout << "Cols: " << matrix.GetNcols() << endl;
 }
 
