@@ -44,16 +44,44 @@ double calc_covariance(vector<double> &data1, vector<double> &data2) {
 }
 
 TMatrixD gen_mat_cov(vector<vector<double>> &matrix) {
-	size_t size = matrix.size();
-	size_t dim = matrix[0].size();
+	int size = matrix.size();
+	int dim = matrix[0].size();
 	TMatrixD cov_matrix(dim, dim);
-	for(size_t i=0; i<size; i++) {
-		for(size_t j=0; j<dim; j++) {
-			for(size_t k=1; k<j; k++) {
-				cov_matrix[j][k] = calc_covariance(matrix[j], matrix[k]);
-				cov_matrix[k][j] = cov_matrix[j][k];
+	double sum_1 = 0.0;
+	double sum_2 = 0.0;
+	double prod = 0.0;
+	cout << "DEBUG: gen_mat_cov" <<endl;
+	cout << "dim=" <<dim <<endl;
+	cout << "size=" << size << endl;
+	
+	for(int i=0; i<dim; i++) {
+		// cout << "loop i";
+		
+		// cout << i << endl;
+		
+		for(int j=i; j<dim; j++) {
+			// cout << "loop ";
+			
+			// cout << "\t" << j << endl;
+			
+			for(int k=0; k<size; k++) {
+				// cout << "loop k";
+				
+				// cout << "\t \t" << endl;
+				
+				// Calculate the sums
 
+				prod += matrix[k][i]*matrix[k][j];
+				sum_1 += matrix[k][i];
+				sum_2 += matrix[k][j];
 			}
+			cov_matrix[i][j] = prod/size - (sum_1/size)*(sum_2/size);
+			cov_matrix[j][i] = cov_matrix[i][j];
+			sum_1=0;
+			sum_2=0;
+			prod = 0;
+			
+						
 		}
 	}
 	return cov_matrix;
@@ -115,15 +143,15 @@ void psuedo_plt(vector<vector<double>> &psuedo_vector)
 
 void matrix_plot(TMatrixT<double> &matrix) 
 {
-	int n_rows = matrix.GetNrows();
-	int n_cols = matrix.GetNcols();
+	int n_rows = 25;
+	int n_cols = 25;
 	TH2F *hist = new TH2F("mat_hist", "Matrix Plot", n_cols, 0, n_cols, n_rows, 0, n_rows);
 	for(int i=0; i<n_rows; i++) {
 		for( int j=0; j<n_rows; j++) {
 			hist->Fill(i+1, j+1, matrix(i,j));
 		}
 	}
-	hist->SetMinimum(-1); // Replace 'minimum_value' with the desired minimum value
+	hist->SetMinimum(-0.3); // Replace 'minimum_value' with the desired minimum value
 	hist->SetMaximum(1); // Replace 'maximum_value' with the desired maximum value
     // Save the histogram to a root file
     TFile outputFile("matrixHistogram.root", "RECREATE");
@@ -249,7 +277,7 @@ int main(int argc, char **argv)
 	// A Vector of vectors of double values
 	vector<vector<double>> spectrum;
 	vector<double> temp;			
-	int num_psuedo = 100;
+	int num_psuedo = 10000;
 	// Save the original spectrum in slot 0
 	for(int i=0; i<364; i++) {
 		temp.push_back(spectrum_transformed(i,0));
@@ -282,31 +310,33 @@ int main(int argc, char **argv)
 		
 		
 	}
-
-	// Calculate the covariance Matrix
-	// for(int i=0; i<25; i++) {
-	// 	for(int j=0; j<i; j++)
-	// 		for(int k=0; k<num_psuedo; k++) {
-	// 			spectrum[k][j]*spectrum[k][j];
-				
-	// 		}
-	// }
-	// This code is for plotting the original 
-
-	// TH1F *hist_cv =  new TH1F("histo_cv", "CV Matrix", 25, 0, 25);
-	// for(int i=0; i<25; i++) {
-	// 	hist_cv->Fill(i+1,spectrum[99].at(i));
-		
-	// }
-	// hist_cv->Sumw2(0);
-	// hist_cv->Draw();
-
-	psuedo_plt(spectrum);
-
-	
 	
 	// Now I need to generate the the covariance matrix
-	// TMatrixD mat_cov_psuedo = gen_mat_cov(spectrum);
+	TMatrixD mat_cov_psuedo = gen_mat_cov(spectrum);
+	// Generate a corr matrix to test against the original mat_rho
+	TMatrixD mat_cor_psuedo(25,25);
+	for(int i=0; i<25; i++) {
+		for(int j=0; j<25; j++) {
+			mat_cor_psuedo(i, j) = mat_cov_psuedo(i, j) / (TMath::Sqrt(mat_cov_psuedo(i,i)*mat_cov_psuedo(j,j)));
+			
+			
+		}
+	}
+
+	// Validate the Covariance Matrix
+	// TH2D *cov_hist = new TH2D("hist", "Covariance Matrix", 25, 0, 25, 25, 0, 25);
+	
+	// for(int i=0; i<25; i++) {
+	// 	for(int j=0; j<25; j++) {
+	// 		cout << mat_cov_psuedo(i,j);
+			
+	// 	}
+	// }
+	// cov_hist->Draw("colz");
+	// matrix_plot(mat_cov_psuedo);
+
+	matrix_plot(mat_cor_psuedo);
+	
 	// cout << "Cov Stats" <<endl;
 	// matrix_stat(cov_transformed);
 	// matrix_stat(mat_cov_psuedo);
