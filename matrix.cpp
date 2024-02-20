@@ -55,22 +55,8 @@ TMatrixD gen_mat_cov(vector<vector<double>> &matrix) {
 	cout << "size=" << size << endl;
 	
 	for(int i=0; i<dim; i++) {
-		// cout << "loop i";
-		
-		// cout << i << endl;
-		
 		for(int j=i; j<dim; j++) {
-			// cout << "loop ";
-			
-			// cout << "\t" << j << endl;
-			
 			for(int k=0; k<size; k++) {
-				// cout << "loop k";
-				
-				// cout << "\t \t" << endl;
-				
-				// Calculate the sums
-
 				prod += matrix[k][i]*matrix[k][j];
 				sum_1 += matrix[k][i];
 				sum_2 += matrix[k][j];
@@ -148,11 +134,13 @@ void matrix_plot(TMatrixT<double> &matrix)
 	TH2F *hist = new TH2F("mat_hist", "Matrix Plot", n_cols, 0, n_cols, n_rows, 0, n_rows);
 	for(int i=0; i<n_rows; i++) {
 		for( int j=0; j<n_rows; j++) {
-			hist->Fill(i+1, j+1, matrix(i,j));
+			hist->SetBinContent(i+1, j+1, matrix(i,j));
 		}
 	}
-	hist->SetMinimum(-0.3); // Replace 'minimum_value' with the desired minimum value
-	hist->SetMaximum(1); // Replace 'maximum_value' with the desired maximum value
+
+	// hist->SetMinimum(-0.3); // Replace 'minimum_value' with the desired minimum value
+	// hist->SetMaximum(1); // Replace 'maximum_value' with the desired maximum valu
+
     // Save the histogram to a root file
     TFile outputFile("matrixHistogram.root", "RECREATE");
 	TCanvas* canvas = new TCanvas("canvas", "TMatrix Plot", 800, 600);
@@ -171,6 +159,22 @@ void matrix_stat(TMatrixT<double> &matrix)
 	cout << "Cols: " << matrix.GetNcols() << endl;
 }
 
+void percent_diff(TMatrixT<double> &val, TMatrixT<double> &ref) 
+{
+	int dim = 25;
+	TH2F *hist = new TH2F("h1", "Percent Difference", dim,0,dim,dim,0,dim);
+	for(int i=0; i<dim; i++) {
+		for( int j=0; j<dim; j++) {
+			hist->SetBinContent(i+1, j+1, 100*((val(i,j)-ref(i,j))/ref(i,j)));
+		}
+		hist->Draw("colz");
+
+	        hist->SetMinimum(-20); // Replace 'minimum_value' with the desired minimum value
+	hist->SetMaximum(20); // Replace 'maximum_value' with the desired maximum valu
+	}
+}
+
+	
 int main(int argc, char **argv) 
 {
 	TApplication app("app", &argc, argv);
@@ -264,10 +268,13 @@ int main(int argc, char **argv)
 			S(j,i) = mat_cv(i,j);
 		}
 	}
-	cout << "Matrix U" <<endl;
-	matrix_stat(U);
-	cout << "Matrix S"<<endl;
-	matrix_stat(S);
+	// cout << "Matrix U" <<endl;
+	// matrix_stat(U);
+	// cout << "Matrix S"<<endl;
+	// matrix_stat(S);
+
+	matrix_plot(cov_transformed);
+	
 	TMatrixD spectrum_transformed = U_t*S; 
 	// Pull out the sigma^2 values and create a lambda array
 	// Loop over to create S'1-S'N values
@@ -312,17 +319,17 @@ int main(int argc, char **argv)
 	}
 	
 	// Now I need to generate the the covariance matrix
-	TMatrixD mat_cov_psuedo = gen_mat_cov(spectrum);
+	// TMatrixD mat_cov_psuedo = gen_mat_cov(spectrum);
 	// Generate a corr matrix to test against the original mat_rho
-	TMatrixD mat_cor_psuedo(25,25);
-	for(int i=0; i<25; i++) {
-		for(int j=0; j<25; j++) {
-			mat_cor_psuedo(i, j) = mat_cov_psuedo(i, j) / (TMath::Sqrt(mat_cov_psuedo(i,i)*mat_cov_psuedo(j,j)));
+	// TMatrixD mat_cor_psuedo(25,25);
+	// for(int i=0; i<25; i++) {
+	// 	for(int j=0; j<25; j++) {
+	// 		mat_cor_psuedo(i, j) = mat_cov_psuedo(i, j) / (TMath::Sqrt(mat_cov_psuedo(i,i)*mat_cov_psuedo(j,j)));
 			
 			
-		}
-	}
-
+	// 	}
+	// }
+	// psuedo_plt(spectrum);
 	// Validate the Covariance Matrix
 	// TH2D *cov_hist = new TH2D("hist", "Covariance Matrix", 25, 0, 25, 25, 0, 25);
 	
@@ -334,8 +341,12 @@ int main(int argc, char **argv)
 	// }
 	// cov_hist->Draw("colz");
 	// matrix_plot(mat_cov_psuedo);
-
-	matrix_plot(mat_cor_psuedo);
+	
+	// matrix_plot(mat_cor_psuedo);
+	// percent_diff(mat_cov_psuedo, mat_cov);
+	// percent_diff(mat_cor_psuedo, mat_rho);
+	
+	
 	
 	// cout << "Cov Stats" <<endl;
 	// matrix_stat(cov_transformed);
