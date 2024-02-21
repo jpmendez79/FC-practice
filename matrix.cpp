@@ -19,8 +19,14 @@
 #include <ostream>
 #include <TRandom3.h>
 #include <cmath>
+#include <TGraph.h>
 using namespace std;
 
+double osc_func(double x, double *param) {
+	double value = 1.0- param[0]*TMath::Power(TMath::Sin(1.267*param[1]*470.0/x), 2.0);
+	
+	return value;
+}
 
 
 double calc_avg(vector<double> &data) {
@@ -273,7 +279,7 @@ int main(int argc, char **argv)
 	// cout << "Matrix S"<<endl;
 	// matrix_stat(S);
 
-	matrix_plot(cov_transformed);
+	// matrix_plot(cov_transformed);
 	
 	TMatrixD spectrum_transformed = U_t*S; 
 	// Pull out the sigma^2 values and create a lambda array
@@ -284,7 +290,7 @@ int main(int argc, char **argv)
 	// A Vector of vectors of double values
 	vector<vector<double>> spectrum;
 	vector<double> temp;			
-	int num_psuedo = 10000;
+	int num_psuedo = 10;
 	// Save the original spectrum in slot 0
 	for(int i=0; i<364; i++) {
 		temp.push_back(spectrum_transformed(i,0));
@@ -353,6 +359,63 @@ int main(int argc, char **argv)
 	// matrix_stat(mat_cov_psuedo);
 	
 	// canvas->Update();
+	cout << "Inverting Cov";
+	
+// Invert the cov matrix
+	
+	TMatrixD cov = mat_cov.GetSub(0, 24, 0, 24);
+
+	TMatrixD cov_invert = cov.Invert();
+	cout << " Done." <<endl;
+	
+	cout << "Generating predicted array";
+	
+// Generate the Predicted Array
+	double param[2]={0.240, 1.29};
+	
+	TMatrixD pred(1,25);
+	for(int i=0; i<25; i++) {
+		pred[0][i] = osc_func(i*10, param);
+	}
+	pred[0][0]=0;
+	
+	cout <<" Done." <<endl;
+	
+	double chisquare_array[num_psuedo];
+	cout << "Populating chisquare arrat";
+	cout <<"Cov Inverted" <<endl;
+	matrix_stat(cov_invert);
+	
+// fuck it, we will do it live
+	for(int i =0; i<num_psuedo; i++) {
+		TMatrixD diff_mp(1,25);
+		// Calculate M-P
+		for(int j=0; j<25; j++) {
+			diff_mp[0][j] = spectrum[i][j] - pred[0][j];
+			// cout <<spectrum[i+1][j]<<"-"<<pred[0][j]<<endl;
+			
+		}
+		// cout << "diff_mp"<<endl;
+		// matrix_stat(diff_mp);
+		TMatrixD diff_mp_transposed (TMatrixD::kTransposed, diff_mp);
+		// cout <<"diff_mp^T" <<endl;
+		// matrix_stat(diff_mp_transposed);
+		
+		// Calculate chisquare
+		// I know this collapses into a single value because science.
+		// Or linear algebra
+		// Reasons
+		chisquare_array[i] = (diff_mp*cov_invert*diff_mp_transposed)[0][0];
+		cout << chisquare_array[i] <<endl;
+		
+	}
+	// cout <<" Done." << endl;
+	
+	TGraph *graph = new TGraph(num_psuedo);
+	for(int i =0; i<num_psuedo; i++) {
+		graph->SetPoint(i, i, chisquare_array[i]);
+	}
+	graph->Draw("AP");
 	app.Run();		
 	return 0;
 }
