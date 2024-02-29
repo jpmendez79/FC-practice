@@ -2,7 +2,6 @@
 #include <TApplication.h>
 #include <TCanvas.h>
 #include <TRootCanvas.h>
-#include <TMath.h>
 #include <TFile.h>
 #include <TMinuit.h>
 #include <TObject.h>
@@ -205,7 +204,7 @@ int main(int argc, char **argv)
 	// Generate the correlation matrix
 	for(int i=0; i<nRows; i++) {
 		for(int j=0; j<nCols; j++) {
-			mat_rho(i, j) = (*mat_frac)(i, j) / (TMath::Sqrt((*mat_frac)(i,i)*(*mat_frac)(j,j)));
+			mat_rho(i, j) = (*mat_frac)(i, j) / (sqrt((*mat_frac)(i,i)*(*mat_frac)(j,j)));
 			
 			
 		}
@@ -243,7 +242,7 @@ int main(int argc, char **argv)
 	
 // 	for(int i=0; i<nRows; i++) {
 // 		for(int j=0; j<nCols; j++) {
-// 			mat_rho_from_cov(i, j) = mat_cov(i, j) / (TMath::Sqrt(mat_cov(i,i)*mat_cov(j,j)));
+// 			mat_rho_from_cov(i, j) = mat_cov(i, j) / (sqrt(mat_cov(i,i)*mat_cov(j,j)));
 			
 // 		}
 // 	}
@@ -253,7 +252,7 @@ int main(int argc, char **argv)
 	
 	// for(int i=0; i<364; i++) {
 	// 	for(int j=0; j<364; j++) {
-	// 		mat_rho_from_cov(i, j) = mat_collapse(i, j) / (TMath::Sqrt(mat_collapse(i,i)*mat_collapse(j,j)));
+	// 		mat_rho_from_cov(i, j) = mat_collapse(i, j) / (sqrt(mat_collapse(i,i)*mat_collapse(j,j)));
 			
 	// 	}
 	// }
@@ -261,7 +260,7 @@ int main(int argc, char **argv)
 	// for(int i=0; i<nCols; i++) {
 	// 	frac_values->Fill(i+1,(*mat_frac)(i,i));
 		
-	// 	// cout << TMath::Sqrt((*mat_frac)(i,i)) <<endl;
+	// 	// cout << sqrt((*mat_frac)(i,i)) <<endl;
 	// }
 	// frac_values->Draw();
 // SVD Decomposition
@@ -332,7 +331,7 @@ int main(int argc, char **argv)
 	// TMatrixD mat_cor_psuedo(25,25);
 	// for(int i=0; i<25; i++) {
 	// 	for(int j=0; j<25; j++) {
-	// 		mat_cor_psuedo(i, j) = mat_cov_psuedo(i, j) / (TMath::Sqrt(mat_cov_psuedo(i,i)*mat_cov_psuedo(j,j)));
+	// 		mat_cor_psuedo(i, j) = mat_cov_psuedo(i, j) / (sqrt(mat_cov_psuedo(i,i)*mat_cov_psuedo(j,j)));
 			
 			
 	// 	}
@@ -404,16 +403,13 @@ int main(int argc, char **argv)
 		// Reasons
 		chisquare_array[i] = (diff_mp*cov_invert*diff_mp_transposed)[0][0];
 	}
-	TCanvas *canvas = new TCanvas("canvas", "Comparison", 800, 600);
+
 	TH1F *chi_hist = new TH1F("chi_hist", "Chi Square", 100, 0, 60);
 	for(int i=0; i<num_psuedo; i++) {
 		chi_hist->Fill(chisquare_array[i]);
 		
 		}
 	chi_hist->Sumw2(0);
-	// chi_hist->Draw();
-	    // TF1 *fChi2 = new TF1("fChi2", "[0]*x^[1]/TMath::Gamma([1]/2)/pow(2, [1]/2)*exp(-x/2)", 30, 100);
-	    // fChi2->SetParameters(1.0, 25.0);
 
 	TF1 *chiSquarePDF = new TF1("chiSquarePDF", "ROOT::Math::chisquared_pdf(x, [0], 0)", 0, 60);
 	chiSquarePDF->SetParameter(0, 25);
