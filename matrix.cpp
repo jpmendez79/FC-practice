@@ -20,10 +20,11 @@
 #include <TRandom3.h>
 #include <cmath>
 #include <TGraph.h>
+#include <TF1.h>
 using namespace std;
 
 double osc_func(double x, double *param) {
-	double value = 1.0- param[0]*TMath::Power(TMath::Sin(1.267*param[1]*470.0/x), 2.0);
+	double value = 1.0- param[0]*pow(sin(1.267*param[1]*470.0/x), 2.0);
 	
 	return value;
 }
@@ -190,8 +191,9 @@ int main(int argc, char **argv)
 	TRandom3 randomgen;
 	randomgen.SetSeed(seed);
 	// Variables for holding extracted data
-	
-	TFile root_file("file_total_80dm2_2tue_t24_input.root");
+	string filename = "file_total_80dm2_2tue_t24_input.root";
+		
+	TFile root_file(filename.c_str());
 	TMatrixD* mat_frac = (TMatrixD*)root_file.Get("matrix_fractional_flux_Xs_G4_det");
 
 	int nRows = mat_frac->GetNrows();
@@ -290,7 +292,7 @@ int main(int argc, char **argv)
 	// A Vector of vectors of double values
 	vector<vector<double>> spectrum;
 	vector<double> temp;			
-	int num_psuedo = 10;
+	int num_psuedo = 10000;
 	// Save the original spectrum in slot 0
 	for(int i=0; i<364; i++) {
 		temp.push_back(spectrum_transformed(i,0));
@@ -371,11 +373,13 @@ int main(int argc, char **argv)
 	cout << "Generating predicted array";
 	
 // Generate the Predicted Array
-	double param[2]={0.240, 1.29};
+	double param[2]={0, 0};
 	
 	TMatrixD pred(1,25);
 	for(int i=0; i<25; i++) {
-		pred[0][i] = osc_func(i*10, param);
+		pred[0][i] = osc_func(i*10, param)*mat_cv[0][i];
+		cout << pred[0][i]<<endl;
+		
 	}
 	pred[0][0]=0;
 	
@@ -386,37 +390,41 @@ int main(int argc, char **argv)
 	cout <<"Cov Inverted" <<endl;
 	matrix_stat(cov_invert);
 	
-// fuck it, we will do it live
+
 	for(int i =0; i<num_psuedo; i++) {
 		TMatrixD diff_mp(1,25);
 		// Calculate M-P
 		for(int j=0; j<25; j++) {
 			diff_mp[0][j] = spectrum[i][j] - pred[0][j];
-			// cout <<spectrum[i+1][j]<<"-"<<pred[0][j]<<endl;
-			
 		}
-		// cout << "diff_mp"<<endl;
-		// matrix_stat(diff_mp);
 		TMatrixD diff_mp_transposed (TMatrixD::kTransposed, diff_mp);
-		// cout <<"diff_mp^T" <<endl;
-		// matrix_stat(diff_mp_transposed);
-		
 		// Calculate chisquare
 		// I know this collapses into a single value because science.
 		// Or linear algebra
 		// Reasons
 		chisquare_array[i] = (diff_mp*cov_invert*diff_mp_transposed)[0][0];
-		cout << chisquare_array[i] <<endl;
+	}
+	TCanvas *canvas = new TCanvas("canvas", "Comparison", 800, 600);
+	TH1F *chi_hist = new TH1F("chi_hist", "Chi Square", 100, 0, 60);
+	for(int i=0; i<num_psuedo; i++) {
+		chi_hist->Fill(chisquare_array[i]);
 		
-	}
-	// cout <<" Done." << endl;
+		}
+	chi_hist->Sumw2(0);
+	// chi_hist->Draw();
+	    // TF1 *fChi2 = new TF1("fChi2", "[0]*x^[1]/TMath::Gamma([1]/2)/pow(2, [1]/2)*exp(-x/2)", 30, 100);
+	    // fChi2->SetParameters(1.0, 25.0);
+
+	TF1 *chiSquarePDF = new TF1("chiSquarePDF", "ROOT::Math::chisquared_pdf(x, [0], 0)", 0, 60);
+	chiSquarePDF->SetParameter(0, 25);
+	chiSquarePDF->SetLineColor(kRed);
 	
-	TGraph *graph = new TGraph(num_psuedo);
-	for(int i =0; i<num_psuedo; i++) {
-		graph->SetPoint(i, i, chisquare_array[i]);
-	}
-	graph->Draw("AP");
-	app.Run();		
+	chi_hist->Scale(1.0 / chi_hist->Integral()/chi_hist->GetBinWidth(1));
+	chi_hist->Draw();
+	// chiSquarePDF->Draw();	
+	chiSquarePDF->Draw("same");		     
+	app.Run();
+	
 	return 0;
 }
 
